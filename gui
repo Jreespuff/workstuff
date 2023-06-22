@@ -1,0 +1,88 @@
+from tkinter import *
+from tkinter import filedialog
+from tkinter import messagebox
+from customtkinter import *
+import os
+import re
+from PyPDF2 import PdfReader
+import concurrent.futures
+import time
+
+def browse_folder():
+    folder_path = str(filedialog.askdirectory(initialdir="Z:\Clients\Altamont\First Republic Bank\Bank Statements", title="Select Folder"))
+    entry_path.delete(0,END)
+    entry_path.insert(END, folder_path)
+    
+
+def pop_up():
+    pop1 = messagebox.showwarning(title='Please Wait', message="Please wait while the process finishes. You will get a popup at the end to tell you the process is done. Press OK to continue...")    
+
+def pop_up2():
+    pop2 = messagebox.showinfo(title='Complete', message="All Statements Renamed.")    
+
+def rename():
+# Define the regex pattern for the desired text
+    regex_pattern_num = r"XXXXXX\d(\d{4})"
+    regex_pattern_name = r"Account Number:\s+XXXXXX\d{5}\s+(.*)\n"
+    date1 = str(date_entry.get())
+    # Define the directory where the PDF files are located
+    folder_path = str(entry_path.get())
+    start_time = time.time()
+    with concurrent.futures.ThreadPoolExecutor(0.5) as executor:
+        for filename in os.listdir(folder_path):
+            try:
+                if filename.endswith('.pdf'):
+                    pdf_path = os.path.join(folder_path, filename)
+                    pdf_file = open(pdf_path, 'rb')
+                    pdf_reader = PdfReader(pdf_file)
+                    num_pages = len(pdf_reader.pages)
+
+
+
+                    # Search for the regex patterns in the first page of the PDF file
+                    text = ""
+                    page = pdf_reader.pages[0]
+                    text += page.extract_text()
+
+                    match_num = re.search(regex_pattern_num, text)
+                    match_name = re.search(regex_pattern_name, text)
+
+                    if match_num and match_name:
+                        # Extract the account number and name and rename the file
+                        account_number = match_num.group(1)
+                        account_name = match_name.group(1).strip()
+                        new_filename = f"{date1} {account_name} - {account_number}.pdf"
+                        new_filepath = os.path.join(folder_path, new_filename)
+                        pdf_file.close()  # close the file before renaming it
+                        os.rename(pdf_path, new_filepath)
+
+                    pdf_file.close()
+            except FileNotFoundError:
+                pass
+    elapsed_time = time.time() - start_time  # Calculate the elapsed time
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+
+
+
+
+window = CTk()
+window.minsize(height=400, width=600)
+window.title('FRB Bank Statement Renamer')
+
+label1 = CTkLabel(window, text="FRB Bank Statement Renamer", font=("Lucida Bright", 25, "bold"))
+label1.grid(column=1, row=0,pady = 25)
+
+button = CTkButton(window, text="Browse", width=5, command=browse_folder)
+button.grid(column=1, row = 2, pady= 10)
+
+entry_path =CTkEntry(window, placeholder_text="Enter a directory path or use Browse",width = 300)
+entry_path.grid(column=1, row = 1,padx = 150)
+
+date_entry = CTkEntry(window, placeholder_text="Enter A Date Here")
+date_entry.grid(column=1, row=3)
+
+
+run_program = CTkButton(window, text="RUN", fg_color="Green", command = lambda:[pop_up(), rename(), pop_up2()])
+run_program.grid(column = 1, row = 4,pady = 7)
+
+window.mainloop()
